@@ -14,8 +14,8 @@ import re
 DAY = str(datetime.date(datetime.now()))
 DB = {}
 VISITED = {}
-CHAT_ID = -0 # int, channel ID
-RAGHAV_ID = 0 # int, account ID
+CHAT_ID = -0    # int, channel ID
+RAGHAV_ID = 0   # int, account ID
 TOKEN = 'token of a bot'
 BOT = telegram.Bot(TOKEN)
 TELEGRAPH = Telegraph()
@@ -84,7 +84,7 @@ def rss():
                                                       disable_web_page_preview=True,)
 
 
-# ------- Called once in a day at 00:0 -------
+# ------- Called once in a day -------
 def new_message():
     global DB
     DB = {}
