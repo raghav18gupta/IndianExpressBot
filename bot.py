@@ -8,6 +8,7 @@ import feedparser
 import requests
 import telegram
 import time
+import sys
 import re
 
 # ------- Global variables -------
@@ -20,17 +21,21 @@ TOKEN = 'token of a bot'
 BOT = telegram.Bot(TOKEN)
 TELEGRAPH = Telegraph()
 TELEGRAPH_ACC = TELEGRAPH.create_account(short_name='ieFeedBot')
-TOMORROW = ['front_page', 'eye', 'editorials', 'opinion', ]
+TOMORROW = ['front_page', 'editorials', 'opinion']
 LINKS = {
-    'politics': 'https://indianexpress.com/section/india/politics/feed/',
     'front_page': 'https://indianexpress.com/print/front-page/feed/',
-    'eye': 'https://indianexpress.com/print/eye/feed/',
+    'lifestyle': 'https://indianexpress.com/section/lifestyle/feed/',
+    'health': 'https://indianexpress.com/section/lifestyle/health/feed/',
+    'science_tech': 'https://indianexpress.com/section/technology/feed/',
+    'cricket': 'https://indianexpress.com/section/sports/cricket/feed/',
+    'hockey': 'https://indianexpress.com/section/sports/hockey/feed/',
     'india': 'https://indianexpress.com/section/india/feed/',
     'world': 'https://indianexpress.com/section/world/feed/',
+    'eye': 'https://indianexpress.com/print/eye/feed/',
     'editorials': 'https://indianexpress.com/section/opinion/editorials/feed/',
     'opinion': 'https://indianexpress.com/section/opinion/feed/',
-    'cricket': 'https://indianexpress.com/section/sports/cricket/feed/',
-    'sports': 'https://indianexpress.com/section/sports/feed/',
+    # 'politics': 'https://indianexpress.com/section/india/politics/feed/',
+    # 'sports': 'https://indianexpress.com/section/sports/feed/',
 }
 
 
@@ -46,7 +51,12 @@ def create_tgph(entry):
     prse = entry['id']
     response = requests.get(prse).text
     soup = BeautifulSoup(response, 'html.parser')
-    content = f'<strong><a href="{prse}">Source article</a></strong><br><br>'
+    try:
+        thumb = f"<img src='{entry['media_thumbnail'][0]['url']}'>"
+    except Exception as e:
+        thumb = ''
+        print('No thumb')
+    content = f'<strong><a href="{prse}">Indian Express</a> |</strong> {time.strftime("%b %d, %Y %l:%M %p")}<br><br>{thumb}'
     content += ''.join(map(lambda element: f'<p>{element.text}</p>', soup.findAll('p')[1:-2]))
     tgph = TELEGRAPH.create_page(
         entry.title,
@@ -74,14 +84,17 @@ def rss():
                     break
 
             entry_id = int(re.split('&p=', entry['id'])[1])
-            print(entry_id, entry.title)
             if entry_id not in VISITED[link_key]:
+                print(f"{datetime.now().strftime('%I:%M %p')} | {entry.title[:50]}")
                 tgph_link = create_tgph(entry)
                 content = f"\n\n〈{datetime.now().strftime('%I:%M %p')}〉 ⟶ [{entry.title}]({tgph_link})"
-                VISITED[link_key].append(entry_id)
-                DB[link_key] = DB[link_key].edit_text(DB[link_key].text_markdown + content,
-                                                      parse_mode=telegram.ParseMode.MARKDOWN,
-                                                      disable_web_page_preview=True,)
+                try:
+                    DB[link_key] = DB[link_key].edit_text(DB[link_key].text_markdown + content, parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True,)
+                    VISITED[link_key].append(entry_id)
+                except Exception as e:
+                    print('Error in editing', e)
+                    time.sleep(30)
+    print('Exiting rss()')
 
 
 # ------- Called once in a day -------
@@ -89,10 +102,15 @@ def new_message():
     global DB
     DB = {}
     for key in LINKS:
-        msg_obj = BOT.send_message(CHAT_ID, f'#{key}', disable_notification=True)
-        DB[key] = msg_obj
-        VISITED[key] = []
-    time.sleep(5 * 60)
+        while True:
+            try:
+                msg_obj = BOT.send_message(CHAT_ID, f'#{key}', disable_notification=True)
+                DB[key] = msg_obj
+                VISITED[key] = []
+                break
+            except Exception as e:
+                print(e)
+                time.sleep(30)
 
 
 # ------- Calling Functions -------
@@ -109,7 +127,9 @@ while True:
             time.sleep(30 * 60)
     except Exception as e:
         try:
-            BOT.send_message(RAGHAV_ID, f'⚠️ *ERROR:* ```{e}```', parse_mode=telegram.ParseMode.MARKDOWN)
+            err = sys.exc_info()
+            BOT.send_message(RAGHAV_ID, f'⚠️ *ERROR:* ```{err[0]}``` _at line number_ ```{err[2].tb_lineno}```',
+                             parse_mode=telegram.ParseMode.MARKDOWN)
         except Exception as e:
             pass
         print(e)
