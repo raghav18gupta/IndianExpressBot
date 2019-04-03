@@ -99,8 +99,6 @@ def rss():
 
 # ------- Called once in a day -------
 def new_message():
-    global DB
-    DB = {}
     for key in LINKS:
         while True:
             try:
