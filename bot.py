@@ -39,9 +39,10 @@ LINKS = {
 }
 
 
-# ------- Finds if now() is new day or'nt -------
+# ------- Finds if DAY is new day or'nt -------
 def new_day():
     if DAY != str(datetime.date(datetime.now())):
+        report_me(f'*new_day() returns True:* ```DAY```')
         return True
     return False
 
@@ -51,19 +52,24 @@ def create_tgph(entry):
     prse = entry['id']
     response = requests.get(prse).text
     soup = BeautifulSoup(response, 'html.parser')
+
     try:
         thumb = f"<img src='{entry['media_thumbnail'][0]['url']}'>"
     except Exception as e:
         thumb = ''
-        print('No thumb')
     content = f'<strong><a href="{prse}">Indian Express</a> |</strong> {time.strftime("%b %d, %Y %l:%M %p")}<br><br>{thumb}'
     content += ''.join(map(lambda element: f'<p>{element.text}</p>', soup.findAll('p')[1:-2]))
-    tgph = TELEGRAPH.create_page(
-        entry.title,
-        html_content=content,
-        author_name='IE Feed Bot',
-        author_url='https://t.me/ieFeedBot',
-    )
+
+    try:
+        tgph = TELEGRAPH.create_page(
+            entry.title,
+            html_content=content,
+            author_name='IE Feed Bot',
+            author_url='https://t.me/ieFeedBot',
+        )
+    except Exception as e:
+        report_me(f'⚠️ *ERROR:* ```{err[0]}```.\n\n *Content:* \n ```{content}```')
+
     return f"https://telegra.ph/{tgph['path']}"
 
 
@@ -109,11 +115,19 @@ def new_message():
             except Exception as e:
                 print(e)
                 time.sleep(30)
+    global DAY
+    DAY = str(datetime.date(datetime.now()))
+
+
+# ------- Report error or messages to me -------
+def report_me(msg):
+    BOT.send_message(RAGHAV_ID, msg, parse_mode=telegram.ParseMode.MARKDOWN)
 
 
 # ------- Calling Functions -------
 try:
     new_message()
+    report_me(f'*AUTH_URL* ⟶ {TELEGRAPH_ACC["auth_url"]}')
 except Exception as e:
     print(e)
 while True:
@@ -126,8 +140,7 @@ while True:
     except Exception as e:
         try:
             err = sys.exc_info()
-            BOT.send_message(RAGHAV_ID, f'⚠️ *ERROR:* ```{err[0]}``` _at line number_ ```{err[2].tb_lineno}```',
-                             parse_mode=telegram.ParseMode.MARKDOWN)
+            report_me(f'⚠️ *ERROR:* ```{err[0]}``` _at line number_ ```{err[2].tb_lineno}```')
         except Exception as e:
             pass
         print(e)
