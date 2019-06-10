@@ -5,11 +5,13 @@ from datetime import datetime, timedelta
 from telegraph import Telegraph
 from bs4 import BeautifulSoup
 import feedparser
+import threading
 import requests
 import telegram
 import time
 import sys
 import re
+
 
 # ------- Global variables -------
 DAY = str(datetime.date(datetime.now()))
@@ -21,28 +23,30 @@ TOKEN = 'token of a bot'
 BOT = telegram.Bot(TOKEN)
 TELEGRAPH = Telegraph()
 TELEGRAPH_ACC = TELEGRAPH.create_account(short_name='ieFeedBot')
-TOMORROW = ['front_page', 'editorials', 'opinion']
+TOMORROW = ['front_page', 'editorials', 'opinion', 'explained']
 LINKS = {
     'front_page': 'https://indianexpress.com/print/front-page/feed/',
-    'lifestyle': 'https://indianexpress.com/section/lifestyle/feed/',
+    'lifestyle': 'https://indianexpress.com/section/refreshlifestyle/feed/',
     'health': 'https://indianexpress.com/section/lifestyle/health/feed/',
     'science_tech': 'https://indianexpress.com/section/technology/feed/',
-    'cricket': 'https://indianexpress.com/section/sports/cricket/feed/',
     'hockey': 'https://indianexpress.com/section/sports/hockey/feed/',
+    'cricket': 'https://indianexpress.com/section/sports/cricket/feed/',
+    'sports': 'https://indianexpress.com/section/sports/feed/',
+    'economy': 'https://indianexpress.com/section/business/feed/',
     'india': 'https://indianexpress.com/section/india/feed/',
     'world': 'https://indianexpress.com/section/world/feed/',
     'eye': 'https://indianexpress.com/print/eye/feed/',
-    'editorials': 'https://indianexpress.com/section/opinion/editorials/feed/',
     'opinion': 'https://indianexpress.com/section/opinion/feed/',
+    'explained': 'https://indianexpress.com/section/explained/feed/',
+    # 'editorials': 'https://indianexpress.com/section/opinion/editorials/feed/',
     # 'politics': 'https://indianexpress.com/section/india/politics/feed/',
-    # 'sports': 'https://indianexpress.com/section/sports/feed/',
 }
 
 
 # ------- Finds if DAY is new day or'nt -------
 def new_day():
     if DAY != str(datetime.date(datetime.now())):
-        report_me(f'*new_day() returns True:* ```DAY```')
+        # report_me(f'*new_day() returns True:* ```DAY```')
         return True
     return False
 
@@ -74,7 +78,7 @@ def create_tgph(entry):
 
 
 # ------- Insert new feeds(by editing the message) -------
-def rss():
+def rss_feed():
     global DAY
     DAY = str(datetime.date(datetime.now()))
     for link_key in LINKS:
@@ -100,7 +104,7 @@ def rss():
                 except Exception as e:
                     print('Error in editing', e)
                     time.sleep(30)
-    print('Exiting rss()')
+    print(f'Exiting rss(), {time.ctime()}')
 
 
 # ------- Called once in a day -------
@@ -135,7 +139,8 @@ while True:
         if new_day():
             new_message()
         elif DB != {}:
-            rss()
+            rss_thread = threading.Thread(target=rss_feed,)
+            rss_thread.start()
             time.sleep(30 * 60)
     except Exception as e:
         try:
